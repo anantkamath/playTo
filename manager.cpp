@@ -4,15 +4,13 @@
 
 #include "manager.h"
 
-#include <unistd.h>
-
+#include <QTimer>
 #include <QDebug>
 
-#include <dbus/dbus.h>
-#include <dbus/ManagerIface.h>
-#include <dbus/RendererDeviceIface.h>
-#include <dbus/PushHostIface.h>
-#include <dbus/PlayerIface.h>
+#include <unistd.h>
+#include "dbus/dbus.h"
+#include "dbus/ManagerIface.h"
+#include "renderer.h"
 
 
 
@@ -20,42 +18,66 @@ Manager::Manager(QString filepath, QObject *parent) :
     QObject(parent), filepath(filepath)
 {
     m = new ManagerIface(RENDERER_SERVICE, ROOT_OBJECT_PATH, QDBusConnection::sessionBus());
-    QDBusReply<QVariant> rescanReply = m->Rescan();
-    qDebug()<<rescanReply.isValid();
+    QDBusPendingCall getRenderersCall = m->GetRenderers();
+    QDBusPendingCallWatcher *watcher = new QDBusPendingCallWatcher(getRenderersCall, this);
 
-    usleep(3*1000*1000);
-
-    QDBusReply<QList<QDBusObjectPath> > getRendererReply = m->GetRenderers();
-    foreach (const QDBusObjectPath &r, getRendererReply.value()) {
-        qDebug()<<r.path();
-        renderers.append(new RendererDeviceIface(RENDERER_SERVICE, r.path(), QDBusConnection::sessionBus()));
-    }
+    QObject::connect(watcher, SIGNAL(finished(QDBusPendingCallWatcher*)),
+                     this, SLOT(getRenderersFinished(QDBusPendingCallWatcher*)));
 }
 
-void Manager::rendererClicked(RendererDeviceIface* renderer)
+void Manager::scan()
 {
-    qDebug()<<renderer->property("FriendlyName");
+    m->Rescan();
+    // renderersUpdated();QTimer::singleShot(3000, this, SIGNAL(scanFinished()));
+}
+
+void Manager::getRenderersFinished(QDBusPendingCallWatcher *call)
+{
+    qDebug()<<"hi";
+    QDBusPendingReply<QList<QDBusObjectPath> > getRendererReply = *call;
+    qDebug()<<getRendererReply.error();
+    foreach (const QDBusObjectPath &r, getRendererReply.value()) {
+        qDebug()<<r.path();
+        renderers.append(new Renderer(r.path(), this));
+    }
+    emit rendererModelUpdated();
+    connect(m, &ManagerIface::FoundRenderer, this, &Manager::addRenderer);
+    //scan();
+}
+
+void Manager::rendererClicked(Renderer* renderer)
+{
+    //qDebug()<<renderer->property("FriendlyName");
     activeRenderer = renderer;
-    pushHostIface = new PushHostIface(RENDERER_SERVICE, activeRenderer->path(), QDBusConnection::sessionBus());
-    QString hostedURI = pushHostIface->HostFile(filepath);
-    playerIface = new PlayerIface(RENDERER_SERVICE, activeRenderer->path(), QDBusConnection::sessionBus());
-    playerIface->OpenUri(hostedURI);
-    playerIface->Play();
+    activeRenderer->play(filepath);
 }
 
 void Manager::windowClosing()
 {
-    if(activeRenderer)
-        playerIface->Stop();
+    if(activeRenderer) {
+        //activeRenderer->stop();
+    }
     m->Release();
 }
 
 void Manager::playPause()
 {
-    playerIface->PlayPause();
+    activeRenderer->playPause();
 }
 
 void Manager::stop()
 {
-    playerIface->Stop();
+    activeRenderer->stop();
+}
+
+void Manager::addRenderer(const QDBusObjectPath & path)
+{
+    qDebug()<<path.path();
+    renderers.append(new Renderer(path.path(), this));
+    emit rendererModelUpdated();
+}
+
+void Manager::removeRenderer(const QDBusObjectPath & path)
+{
+    emit rendererModelUpdated();
 }

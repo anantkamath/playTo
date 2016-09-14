@@ -7,10 +7,8 @@
 
 #include <QObject>
 
+#include "renderer.h"
 #include <dbus/ManagerIface.h>
-#include <dbus/RendererDeviceIface.h>
-#include <dbus/PushHostIface.h>
-#include <dbus/PlayerIface.h>
 
 class Manager : public QObject
 {
@@ -18,28 +16,27 @@ class Manager : public QObject
 public:
     explicit Manager(QString filepath, QObject *parent = 0);
 
-    Q_PROPERTY(QList<QObject*> rendererModel READ getRenderers)
+    Q_PROPERTY(QList<QObject*> rendererModel READ getRenderers NOTIFY rendererModelUpdated)
     inline QList<QObject*> getRenderers() const
     { return renderers; }
 
-    Q_PROPERTY(QObject* player READ getPlayer)
-    inline QObject* getPlayer() const
-    { return playerIface; }
-
 signals:
-
+    void rendererModelUpdated();
+    void scanFinished();
 public slots:
-    void rendererClicked(RendererDeviceIface*);
+    void rendererClicked(Renderer*);
+    void getRenderersFinished(QDBusPendingCallWatcher *call);
     void windowClosing();
     void playPause();
     void stop();
+    void scan();
+    void addRenderer(const QDBusObjectPath &);
+    void removeRenderer(const QDBusObjectPath &);
 private:
     ManagerIface *m;
     QString filepath;
     QList<QObject*> renderers;
-    RendererDeviceIface *activeRenderer;
-    PushHostIface *pushHostIface;
-    PlayerIface *playerIface;
+    Renderer *activeRenderer;
 };
 
 #endif // MANAGER_H
