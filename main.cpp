@@ -15,7 +15,7 @@
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
-    QCoreApplication::setApplicationName("streamTo");
+    QCoreApplication::setApplicationName("playTo");
     QCoreApplication::setApplicationVersion("0.1");
 
     QCommandLineParser parser;
@@ -44,6 +44,7 @@ int main(int argc, char *argv[])
     else {
         filename = args.at(0);
     }
+    //filename = "aa";
 
     Manager *manager = new Manager(filename);
 

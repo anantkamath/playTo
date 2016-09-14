@@ -12,7 +12,7 @@ ApplicationWindow {
     height: 300
     minimumWidth: 320
     minimumHeight: 300
-    title: qsTr("StreamTo")
+    title: qsTr("PlayTo")
     property string activeRendererName: ""
 
     onClosing: manager.windowClosing()

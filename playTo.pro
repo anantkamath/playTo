@@ -8,7 +8,8 @@ SOURCES += main.cpp \
     dbus/PlayerIface.cpp \
     dbus/PushHostIface.cpp \
     dbus/RendererDeviceIface.cpp \
-    manager.cpp
+    manager.cpp \
+    renderer.cpp
 
 RESOURCES += qml.qrc
 
@@ -25,4 +26,5 @@ HEADERS += \
     dbus/PushHostIface.h \
     dbus/RendererDeviceIface.h \
     manager.h \
-    dbus/dbus.h
+    dbus/dbus.h \
+    renderer.h
